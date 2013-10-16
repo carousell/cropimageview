@@ -25,6 +25,8 @@ public class CropImageView extends ImageView {
     float maxScale = 5f;
     float[] m;
 
+    float widthToHeightRatio = 1f;
+    
     float y1, y2;
 
     int viewWidth, viewHeight;
@@ -85,6 +87,11 @@ public class CropImageView extends ImageView {
 
     public void setMaxZoom(float x) {
         maxScale = x;
+    }
+    
+    public void setWidthToHeightRatio(float widthToHeightRatio) {
+    	// TODO throw exception if invalid
+    	this.widthToHeightRatio = widthToHeightRatio;
     }
 
     private void translate(float dX, float dY) {
@@ -228,8 +235,10 @@ public class CropImageView extends ImageView {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
         viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         viewHeight = MeasureSpec.getSize(heightMeasureSpec);
-        y1 = (viewHeight - viewWidth) / 2;
-        y2 = y1 + viewWidth;
+        int targetHeight = (int) (viewWidth/widthToHeightRatio);
+        
+        y1 = (viewHeight - targetHeight) / 2;
+        y2 = y1 + targetHeight;
 
         if (oldMeasuredHeight == viewWidth && oldMeasuredHeight == viewHeight
                 || viewWidth == 0 || viewHeight == 0)
@@ -268,9 +277,10 @@ public class CropImageView extends ImageView {
 
             int x = (int) ((0 - pX) / (saveScale * firstScale));
             int y = (int) ((y1 - pY) / (saveScale * firstScale));
-            int s = (int) (viewWidth / (saveScale * firstScale));
+            int w = (int) (viewWidth / (saveScale * firstScale));
+            int h = (int) ((y2 - y1) / (saveScale * firstScale));
 
-            result = Bitmap.createBitmap(bitmap, x, y, s, s);
+            result = Bitmap.createBitmap(bitmap, x, y, w, h);
             if (width > 0 && height > 0)
                 result = Bitmap.createScaledBitmap(result, width, height, true);
             return result;
