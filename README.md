@@ -1,3 +1,7 @@
+# TODO
+- Setup lib project, test, sample
+- Proper documentation
+
 # CropImageView
 
 **Google+'s image cropping style**
