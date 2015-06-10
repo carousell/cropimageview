@@ -11,6 +11,7 @@
 - `setImageBitmap(Bitmap bitmap)`
 - `getCroppedBitmap(int width, int height, Bitmap.Config config)`
 - `rotate(int degrees)`
+- `getCroppedRect(int originalWidth, int originalHeight)`
 
 ## Caveat
 

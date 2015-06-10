@@ -267,8 +267,11 @@ public class CropImageView extends ImageView {
         canvas.drawRect(rMid, transparent);
     }
 
-    public Bitmap getCroppedBitmap(int width, int height, Bitmap.Config config) throws Exception, OutOfMemoryError {
-        Bitmap bitmap = ((BitmapDrawable) getDrawable()).getBitmap();
+    public Bitmap getCroppedBitmap(int width, int height, Bitmap.Config config) throws OutOfMemoryError {
+        Bitmap bitmap;
+        if (BitmapDrawable.class.isInstance(getDrawable())) {
+            bitmap = ((BitmapDrawable) getDrawable()).getBitmap();
+        }
         if (bitmap == null) return null;
 
         Bitmap cropped = Bitmap.createBitmap(width, height, config);
@@ -287,8 +290,11 @@ public class CropImageView extends ImageView {
         return cropped;
     }
 
-    public void rotate(int degrees) throws Exception, OutOfMemoryError {
-        Bitmap b = ((BitmapDrawable) getDrawable()).getBitmap();
+    public void rotate(int degrees) throws OutOfMemoryError {
+        Bitmap b;
+        if (BitmapDrawable.class.isInstance(getDrawable())) {
+            b = ((BitmapDrawable) getDrawable()).getBitmap();
+        }
         if (b == null) return;
 
         if (degrees != 0 && b != null) {
@@ -303,5 +309,29 @@ public class CropImageView extends ImageView {
                 setImageBitmap(b);
             }
         }
+    }
+
+    public Rect getCroppedRect(int originalWidth, int originalHeight) {
+        Bitmap bitmap;
+        if (BitmapDrawable.class.isInstance(getDrawable())) {
+            bitmap = ((BitmapDrawable) getDrawable()).getBitmap();
+        }
+        if (bitmap == null) return new Rect();
+
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        float wScale = (float) originalWidth / width;
+        float hScale = (float) originalHeight / height;
+        int scale = Math.round(Math.max(wScale, hScale));
+
+        matrix.getValues(m);
+        float pX = m[Matrix.MTRANS_X];
+        float pY = m[Matrix.MTRANS_Y];
+        int x = (int) ((0 - pX) / (saveScale * firstScale));
+        int y = (int) ((y1 - pY) / (saveScale * firstScale));
+        int w = (int) (viewWidth / (saveScale * firstScale));
+        int h = (int) ((y2 - y1) / (saveScale * firstScale));
+
+        return new Rect(x * scale, y * scale, (x + w) * scale, (y + h) * scale);
     }
 }
