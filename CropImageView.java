@@ -4,11 +4,11 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -17,8 +17,6 @@ import android.widget.ImageView;
 
 public class CropImageView extends ImageView {
 
-    private static final String TAG = "CropImageView";
-
     Matrix matrix;
 
     float minScale = 1f;
@@ -26,14 +24,14 @@ public class CropImageView extends ImageView {
     float[] m;
 
     float widthToHeightRatio = 1f;
-    
+
     float y1, y2;
 
     int viewWidth, viewHeight;
 
     float firstScale;
     float saveScale = 1f;
-    protected float origWidth, origHeight;
+    float origWidth, origHeight;
     int oldMeasuredWidth, oldMeasuredHeight;
 
     Paint semitransparent;
@@ -44,11 +42,12 @@ public class CropImageView extends ImageView {
 
     boolean isRotated;
 
-    Context context;
+    RectF rTop = new RectF();
+    RectF rMid = new RectF();
+    RectF rBtm = new RectF();
 
     public CropImageView(Context context) {
-        super(context);
-        setup(context);
+        this(context, null);
     }
 
     public CropImageView(Context context, AttributeSet attrs) {
@@ -58,7 +57,6 @@ public class CropImageView extends ImageView {
 
     private void setup(Context context) {
         super.setClickable(true);
-        this.context = context;
 
         semitransparent = new Paint();
         semitransparent.setColor(Color.BLACK);
@@ -88,10 +86,12 @@ public class CropImageView extends ImageView {
     public void setMaxZoom(float x) {
         maxScale = x;
     }
-    
-    public void setWidthToHeightRatio(float widthToHeightRatio) {
-    	// TODO throw exception if invalid
-    	this.widthToHeightRatio = widthToHeightRatio;
+
+    public void setWidthToHeightRatio(float ratio) {
+        if (widthToHeightRatio <= 0) {
+            throw new IllegalStateException();
+        }
+        widthToHeightRatio = ratio;
     }
 
     private void translate(float dX, float dY) {
@@ -115,7 +115,7 @@ public class CropImageView extends ImageView {
                 fX = viewWidth - rX;
         }
 
-        if (dY > 0 && pY <= y1) { 
+        if (dY > 0 && pY <= y1) {
             if (pY <= y1)
                 fY = dY + pY > y1 ? y1 - pY : dY;
             else
@@ -154,8 +154,7 @@ public class CropImageView extends ImageView {
             matrix.postTranslate(fX, fY);
     }
 
-    private class GestureListener extends
-            GestureDetector.SimpleOnGestureListener {
+    private class GestureListener extends GestureDetector.SimpleOnGestureListener {
         @Override
         public boolean onDown(MotionEvent e) {
             return true;
@@ -169,8 +168,7 @@ public class CropImageView extends ImageView {
         }
     }
 
-    private class ScaleListener extends
-            ScaleGestureDetector.SimpleOnScaleGestureListener {
+    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         @Override
         public boolean onScaleBegin(ScaleGestureDetector detector) {
             return true;
@@ -205,9 +203,10 @@ public class CropImageView extends ImageView {
         float scale;
 
         Drawable drawable = getDrawable();
-        if (drawable == null || drawable.getIntrinsicWidth() == 0
-                || drawable.getIntrinsicHeight() == 0)
+        if (drawable == null || drawable.getIntrinsicWidth() == 0 || drawable.getIntrinsicHeight() == 0) {
             return;
+        }
+
         int bmWidth = drawable.getIntrinsicWidth();
         int bmHeight = drawable.getIntrinsicHeight();
 
@@ -235,14 +234,15 @@ public class CropImageView extends ImageView {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
         viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         viewHeight = MeasureSpec.getSize(heightMeasureSpec);
-        int targetHeight = (int) (viewWidth/widthToHeightRatio);
-        
+        int targetHeight = (int) (viewWidth / widthToHeightRatio);
+
         y1 = (viewHeight - targetHeight) / 2;
         y2 = y1 + targetHeight;
 
-        if (oldMeasuredHeight == viewWidth && oldMeasuredHeight == viewHeight
-                || viewWidth == 0 || viewHeight == 0)
+        if (oldMeasuredHeight == viewWidth && oldMeasuredHeight == viewHeight || viewWidth == 0 || viewHeight == 0) {
             return;
+        }
+
         oldMeasuredHeight = viewHeight;
         oldMeasuredWidth = viewWidth;
 
@@ -259,59 +259,49 @@ public class CropImageView extends ImageView {
     @Override
     public void draw(Canvas canvas) {
         super.draw(canvas);
-        RectF rTop = new RectF(0, 0, viewWidth, y1);
-        RectF rMid = new RectF(0, y1, viewWidth, y2);
-        RectF rBtm = new RectF(0, y2, viewWidth, viewHeight);
+        rTop.set(0, 0, viewWidth, y1);
+        rMid.set(0, y1, viewWidth, y2);
+        rBtm.set(0, y2, viewWidth, viewHeight);
         canvas.drawRect(rTop, semitransparent);
         canvas.drawRect(rBtm, semitransparent);
         canvas.drawRect(rMid, transparent);
     }
 
-    public Bitmap getCroppedBitmap(int width, int height) {
-        Bitmap result = null;
-        try {
-            Bitmap bitmap = ((BitmapDrawable) getDrawable()).getBitmap();
-            matrix.getValues(m);
-            float pX = m[Matrix.MTRANS_X];
-            float pY = m[Matrix.MTRANS_Y];
+    public Bitmap getCroppedBitmap(int width, int height, Bitmap.Config config) throws Exception, OutOfMemoryError {
+        Bitmap bitmap = ((BitmapDrawable) getDrawable()).getBitmap();
+        if (bitmap == null) return null;
 
-            int x = (int) ((0 - pX) / (saveScale * firstScale));
-            int y = (int) ((y1 - pY) / (saveScale * firstScale));
-            int w = (int) (viewWidth / (saveScale * firstScale));
-            int h = (int) ((y2 - y1) / (saveScale * firstScale));
+        Bitmap cropped = Bitmap.createBitmap(width, height, config);
+        matrix.getValues(m);
+        float pX = m[Matrix.MTRANS_X];
+        float pY = m[Matrix.MTRANS_Y];
+        int x = (int) ((0 - pX) / (saveScale * firstScale));
+        int y = (int) ((y1 - pY) / (saveScale * firstScale));
+        int w = (int) (viewWidth / (saveScale * firstScale));
+        int h = (int) ((y2 - y1) / (saveScale * firstScale));
 
-            result = Bitmap.createBitmap(bitmap, x, y, w, h);
-            if (width > 0 && height > 0)
-                result = Bitmap.createScaledBitmap(result, width, height, true);
-            return result;
-        } catch (Exception e) {
-            Log.e(TAG, "fail to crop image", e);
-        } catch (OutOfMemoryError e) {
-            Log.e(TAG, "fail to crop image", e);
-        }
-        if (result != null)
-            result.recycle();
-        return null;
+        Rect sr = new Rect(x, y, x + w, y + h);
+        Canvas canvas = new Canvas(cropped);
+        Rect dr = new Rect(0, 0, width, height);
+        canvas.drawBitmap(bitmap, sr, dr, new Paint(Paint.FILTER_BITMAP_FLAG));
+        return cropped;
     }
 
-    public Bitmap rotate(Bitmap b, int degrees) {
+    public void rotate(int degrees) throws Exception, OutOfMemoryError {
+        Bitmap b = ((BitmapDrawable) getDrawable()).getBitmap();
+        if (b == null) return;
+
         if (degrees != 0 && b != null) {
             Matrix m = new Matrix();
-            m.setRotate(degrees, (float) b.getWidth() / 2,
-                    (float) b.getHeight() / 2);
-            try {
-                Bitmap b2 = Bitmap.createBitmap(b, 0, 0, b.getWidth(),
-                        b.getHeight(), m, true);
-                if (b != b2) {
-                    b.recycle();
-                    b = b2;
-                }
-            } catch (OutOfMemoryError e) {
-                Log.e(TAG, "fail to rotate bitmap", e);
+            m.setRotate(degrees, (float) b.getWidth() / 2, (float) b.getHeight() / 2);
+
+            Bitmap b2 = Bitmap.createBitmap(b, 0, 0, b.getWidth(), b.getHeight(), m, true);
+            if (b != b2) {
+                b.recycle();
+                b = b2;
+                isRotated = true;
+                setImageBitmap(b);
             }
         }
-        isRotated = true;
-        setImageBitmap(b);
-        return b;
     }
 }
