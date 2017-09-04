@@ -769,14 +769,9 @@ public class CropImageView extends FrameLayout {
      * Clear the current image set for cropping.<br>
      * Full clear will also clear the data of the set image like Uri or Resource id while partial
      * clear
-     * will only clear the bitmap and recycle if required.
+     * will only clear the bitmap.
      */
     private void clearImageInt() {
-
-        // if we allocated the bitmap, release it as fast as possible
-        if (mBitmap != null) {
-            mBitmap.recycle();
-        }
         mBitmap = null;
 
         // clean the loaded image flags for new image
