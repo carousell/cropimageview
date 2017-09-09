@@ -102,7 +102,7 @@ public class CropImageView extends FrameLayout {
     /**
      * The sample size the image was loaded by if was loaded by URI
      */
-    private int mLoadedSampleSize = 1;
+    private float mLoadedSampleSize = 1f;
 
     /**
      * The current zoom level to to scale the cropping image
@@ -518,8 +518,8 @@ public class CropImageView extends FrameLayout {
             return null;
         }
 
-        int orgWidth = mBitmap.getWidth() * mLoadedSampleSize;
-        int orgHeight = mBitmap.getHeight() * mLoadedSampleSize;
+        int orgWidth = (int) (mBitmap.getWidth() * mLoadedSampleSize);
+        int orgHeight = (int) (mBitmap.getHeight() * mLoadedSampleSize);
         return new Rect(0, 0, orgWidth, orgHeight);
     }
 
@@ -535,8 +535,8 @@ public class CropImageView extends FrameLayout {
             // get the points of the crop rectangle adjusted to source bitmap
             float[] points = getCropPoints();
 
-            int orgWidth = mBitmap.getWidth() * mLoadedSampleSize;
-            int orgHeight = mBitmap.getHeight() * mLoadedSampleSize;
+            int orgWidth = (int) (mBitmap.getWidth() * mLoadedSampleSize);
+            int orgHeight = (int) (mBitmap.getHeight() * mLoadedSampleSize);
 
             // get the rectangle for the points (it may be larger than original if rotation is
             // not stright)
@@ -629,7 +629,7 @@ public class CropImageView extends FrameLayout {
      * @param loadSampleSize the sample size of bitmap
      * @param degreesRotated the degrees bitmap should be rotated
      */
-    public void setImageBitmap(Bitmap bitmap, int loadSampleSize, int degreesRotated) {
+    public void setImageBitmap(Bitmap bitmap, float loadSampleSize, int degreesRotated) {
         mCropOverlayView.setInitialCropWindowRect(null);
         setBitmap(bitmap, loadSampleSize, degreesRotated);
     }
@@ -743,7 +743,7 @@ public class CropImageView extends FrameLayout {
      * Optionally clear full if the bitmap is new, or partial clear if the bitmap has been
      * manipulated.
      */
-    private void setBitmap(Bitmap bitmap, int loadSampleSize, int degreesRotated) {
+    private void setBitmap(Bitmap bitmap, float loadSampleSize, int degreesRotated) {
         if (mBitmap == null || !mBitmap.equals(bitmap)) {
 
             mImageView.clearAnimation();
